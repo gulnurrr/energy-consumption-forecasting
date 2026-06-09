@@ -1,24 +1,33 @@
+import os
 import requests
 import pandas as pd
-import sqlite3
-import os
-from dotenv import load_dotenv
-import json
+from src.config import config
 
-load_dotenv()
-
-API_KEY = os.getenv('EIA_API_KEY')
-db_name = "electricity_data.db"
+# Updated ingest function with the officially correct EIA API v2 structure
+def fetch_daily_grid_data(rto_code: str = "PSCO") -> pd.DataFrame:
+    api_key = config.EIA_API_KEY or os.getenv("EIA_API_KEY")
     
-def fetch_api(api_key=API_KEY):
+    # The correct endpoint for daily grid data is 'daily-region-data'
+    # Start and End dates are passed as direct URL parameters
+    base_url = "https://api.eia.gov/v2/electricity/rto/daily-region-data/data/"
     
-    url = f"http://api.eia.gov/v2/electricity/retail-sales/data/?api_key={api_key}&data[]=sales&facets[stateid][]=CO&facets[sectorid][]=RES&frequency=monthly"
-
-    response = requests.get(url)
-
+    params = {
+        "api_key": api_key,
+        "frequency": "daily",
+        "data[0]": "value",
+        "facets[respondent][]": rto_code,
+        "facets[type][]": "D",
+        "start": "2016-01-01",
+        "end": "2026-06-01" 
+    }
+    
+    print(f"Ingest Pipeline: Fetching 10 years of DAILY data for RTO: {rto_code}...")
+    response = requests.get(base_url, params=params, timeout=15)
+    
     if response.status_code == 200:
-        print("Data has been fetched")
-        return response.json()
+        data = response.json()
+        df = pd.DataFrame(data["response"]["data"])
+        print(f"Ingest Pipeline: Successfully fetched {len(df)} records.")
+        return df
     else:
-        raise Exception(f"API request failed: {response.status_code}")
-    
+        raise Exception(f" API Error {response.status_code}: {response.text}")

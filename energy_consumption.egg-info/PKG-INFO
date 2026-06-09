@@ -1,0 +1,18 @@
+Metadata-Version: 2.4
+Name: energy_consumption
+Version: 0.1.0
+Summary: End-to-end Time Series Energy Consumption MLOps Pipeline
+Requires-Dist: requests
+Requires-Dist: pandas
+Requires-Dist: pyarrow
+Requires-Dist: python-dotenv
+Requires-Dist: jupyter
+Requires-Dist: matplotlib
+Requires-Dist: seaborn
+Requires-Dist: scipy
+Requires-Dist: statsmodels
+Requires-Dist: scikit-learn
+Requires-Dist: pmdarima
+Requires-Dist: xgboost
+Requires-Dist: torch
+Requires-Dist: meteostat

@@ -1,0 +1,14 @@
+requests
+pandas
+pyarrow
+python-dotenv
+jupyter
+matplotlib
+seaborn
+scipy
+statsmodels
+scikit-learn
+pmdarima
+xgboost
+torch
+meteostat
