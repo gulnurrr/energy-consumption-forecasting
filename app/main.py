@@ -1,5 +1,6 @@
 import json
 from contextlib import asynccontextmanager
+from datetime import date as Date
 
 import holidays
 import joblib
@@ -72,7 +73,7 @@ app = FastAPI(
 # Schemas
 # ---------------------------------------------------------------------------
 class PredictionRequest(BaseModel):
-    date: str = Field(..., description="Forecast date (YYYY-MM-DD)", examples=["2024-03-15"])
+    date: Date = Field(..., description="Forecast date (YYYY-MM-DD)", examples=["2024-03-15"])
     temperature: float = Field(..., description="Mean daily temperature in °C", examples=[12.5])
     lag_1: float = Field(..., description="Electricity demand 1 day ago (MWh)", examples=[280000.0])
     lag_7: float = Field(..., description="Electricity demand 7 days ago (MWh)", examples=[275000.0])
@@ -156,7 +157,7 @@ def predict(request: PredictionRequest) -> PredictionResponse:
     logger.info(f"Prediction | date={request.date} | demand={prediction:.2f} MWh")
 
     return PredictionResponse(
-        date=request.date,
+        date=str(request.date),
         predicted_demand_mwh=round(prediction, 2),
     )
 

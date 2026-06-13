@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     EIA_API_KEY: str
     WEATHER_API_URL: str = "https://archive-api.open-meteo.com/v1/archive"
 
+    # Grid coordinates — PSCO service territory (Denver, CO)
+    GRID_LAT: float = 39.7
+    GRID_LON: float = -104.9
+
     # MLflow
     MLFLOW_EXPERIMENT_NAME: str = "Energy_Consumption_Forecasting"
 

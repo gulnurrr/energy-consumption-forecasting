@@ -27,6 +27,13 @@ def train_model(df, best_params: dict | None = None):
     """
     mlflow.set_experiment(config.MLFLOW_EXPERIMENT_NAME)
 
+    # Drop NaN rows from lag/rolling features before splitting
+    n_before = len(df)
+    df = df.dropna()
+    n_dropped = n_before - len(df)
+    if n_dropped > 0:
+        logger.info(f"Dropped {n_dropped} NaN rows from lag/rolling warm-up | {len(df)} rows remaining")
+
     X = df.drop(columns=["demand_mwh"])
     y = df["demand_mwh"]
 

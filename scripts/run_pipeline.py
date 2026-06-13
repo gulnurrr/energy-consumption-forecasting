@@ -38,7 +38,7 @@ def main():
 
         # 4. FEATURE ENGINEERING
         logger.info("Adding weather features...")
-        df = add_weather_features(df, lat=39.7, lon=-104.9)
+        df = add_weather_features(df, lat=config.GRID_LAT, lon=config.GRID_LON)
 
         logger.info("Building time-series features...")
         df = create_features(df)
