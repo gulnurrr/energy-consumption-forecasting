@@ -30,6 +30,14 @@ class Settings(BaseSettings):
 
     # MLflow
     MLFLOW_EXPERIMENT_NAME: str = "Energy_Consumption_Forecasting"
+    # Explicit URI keeps all scripts and notebooks pointing at the same store.
+    # Defaults to a SQLite file at the project root so the location is
+    # always absolute and CWD-independent (notebooks/ won't create a stray DB).
+    MLFLOW_TRACKING_URI: str = ""
+
+    @property
+    def mlflow_uri(self) -> str:
+        return self.MLFLOW_TRACKING_URI or f"sqlite:///{self.BASE_DIR / 'mlruns.db'}"
 
     def create_dirs(self) -> None:
         """Create all required project directories.

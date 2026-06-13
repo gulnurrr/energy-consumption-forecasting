@@ -25,6 +25,8 @@ def train_model(df, best_params: dict | None = None):
     Registers the model in the MLflow Model Registry under
     'energy-demand-xgboost' so it can be loaded by alias elsewhere.
     """
+    if config.MLFLOW_TRACKING_URI:
+        mlflow.set_tracking_uri(config.MLFLOW_TRACKING_URI)
     mlflow.set_experiment(config.MLFLOW_EXPERIMENT_NAME)
 
     # Drop NaN rows from lag/rolling features before splitting

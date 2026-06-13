@@ -25,3 +25,6 @@ __pycache__/
 
 # OS
 .DS_Store
+
+# Allow placeholder files that keep empty dirs in git
+!**/.gitkeep

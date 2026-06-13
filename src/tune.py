@@ -23,6 +23,8 @@ def tune_model(X, y, n_trials: int = 30) -> dict:
     "optuna_tuning" run so the full search history is queryable in the UI.
     Returns best_params dict ready to pass directly to train_model().
     """
+    if config.MLFLOW_TRACKING_URI:
+        mlflow.set_tracking_uri(config.MLFLOW_TRACKING_URI)
     mlflow.set_experiment(config.MLFLOW_EXPERIMENT_NAME)
     tscv = TimeSeriesSplit(n_splits=5)
 
