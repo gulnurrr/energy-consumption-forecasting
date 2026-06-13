@@ -30,7 +30,8 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
     df = df.sort_values("period")
     df = df.set_index("period")
 
-    # 5. Ensure numeric target
+    # 5. Ensure numeric target — coerce drops any string that slipped past dropna()
     df["demand_mwh"] = pd.to_numeric(df["demand_mwh"], errors="coerce")
+    df = df.dropna(subset=["demand_mwh"])
 
     return df
