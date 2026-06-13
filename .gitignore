@@ -1,8 +1,27 @@
+# Environment & secrets
 .env
+.env.*
+!.env.example
+
+# Data, models, artifacts (large/generated files)
 data/
 models/
-.venv/
+artifacts/
+logs/
 mlruns/
+
+# Python
+.venv/
 __pycache__/
+*.py[cod]
+*.egg-info/
+
+# Model binaries
 *.pkl
 *.joblib
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
