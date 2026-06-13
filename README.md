@@ -1,78 +1,215 @@
 # Energy Demand Forecasting
 
-An end-to-end machine learning project for forecasting daily energy demand using historical consumption data and weather-related features.
+End-to-end MLOps pipeline that forecasts **daily electricity demand (MWh)** for the PSCO grid region (Colorado, USA).
 
-## Project Overview
-
-This project compares traditional time-series forecasting methods with machine learning approaches to predict daily energy demand.
-
-Models evaluated:
-
-* Seasonal Naive Baseline
-* SARIMA (Auto ARIMA)
-* XGBoost
+---
 
 ## Results
 
-| Model          | RMSE   |
-| -------------- | ------ |
-| Seasonal Naive | 66,106 |
-| SARIMA         | 70,227 |
-| XGBoost        | 58,431 |
+| Model          | RMSE   | MAPE  |
+| -------------- | ------ | ----- |
+| Seasonal Naive | 66,106 | —     |
+| SARIMA         | 70,227 | —     |
+| **XGBoost**    | **58,431** | **4.7%** |
 
-**Best Model:** XGBoost
+Best model: XGBoost with Optuna hyperparameter search + 5-fold TimeSeriesSplit cross-validation.
 
-Additional evaluation:
+---
 
-* MAPE: 4.7%
+## Architecture
+
+```
+EIA API ──► ingest.py ──► preprocess.py ──► data_quality.py
+                                                  │
+                                            features.py ◄── Open-Meteo API
+                                                  │
+                                             tune.py (optional Optuna search)
+                                                  │
+                                             train.py ──► MLflow Model Registry
+                                                  │
+                                           artifacts/
+                                          ├── model.pkl
+                                          └── feature_columns.json
+                                                  │
+                                            app/main.py  (FastAPI)
+                                           POST /predict
+                                           GET  /health
+```
+
+---
+
+## Quick Start
+
+```bash
+# 1. Create and activate virtual environment
+python -m venv .venv
+.venv\Scripts\activate          # Windows
+# source .venv/bin/activate     # Linux/macOS
+
+# 2. Install all dependencies
+pip install -e ".[dev]"
+
+# 3. Configure secrets
+cp .env.example .env
+# Edit .env and set EIA_API_KEY=<your key from https://www.eia.gov/opendata/>
+```
+
+---
+
+## Running the Pipeline
+
+```bash
+# Basic run (uses cached data if available)
+python scripts/run_pipeline.py
+
+# Force re-fetch from EIA API and recompute all features
+python scripts/run_pipeline.py --no-cache
+
+# Run with Optuna hyperparameter search (30 trials by default)
+python scripts/run_pipeline.py --tune
+
+# Tune with a custom trial budget
+python scripts/run_pipeline.py --tune --n-trials 50
+```
+
+The pipeline caches intermediate outputs so subsequent runs are faster:
+
+| Cache file | Contents | Skips |
+|---|---|---|
+| `data/raw/demand_raw.parquet` | Raw EIA API response | API re-fetch |
+| `data/processed/features.parquet` | Fully featured DataFrame | Preprocess + weather fetch + feature engineering |
+
+Use `--no-cache` to bypass both caches and start fresh.
+
+---
+
+## API Server
+
+```bash
+# Requires artifacts/model.pkl — run the pipeline first
+uvicorn app.main:app --reload --port 8000
+```
+
+Interactive docs: `http://localhost:8000/docs`
+
+**Endpoints:**
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/predict` | Predict daily electricity demand (MWh) |
+| `GET` | `/health` | Service health + model status |
+
+Example request:
+
+```json
+POST /predict
+{
+  "date": "2024-03-15",
+  "temperature": 12.5,
+  "lag_1": 280000.0,
+  "lag_7": 275000.0,
+  "lag_14": 278000.0,
+  "lag_21": 272000.0,
+  "lag_30": 268000.0,
+  "rolling_mean_7d": 276000.0,
+  "rolling_std_7d": 8000.0,
+  "rolling_mean_14d": 274000.0
+}
+```
+
+---
+
+## MLflow
+
+```bash
+mlflow ui
+```
+
+Opens at `http://localhost:5000`. Shows experiment runs, nested Optuna trials, and registered model versions.
+
+Set `MLFLOW_TRACKING_URI` in `.env` to point all scripts and notebooks at the same tracking store (prevents notebooks from creating a stray `mlflow.db` in their own directory):
+
+```env
+MLFLOW_TRACKING_URI=sqlite:///mlruns.db
+```
+
+---
+
+## Tests
+
+```bash
+pytest tests/ -v                                        # all tests (159+)
+pytest tests/test_train.py -v                           # training tests
+pytest tests/ --cov=src --cov-report=term-missing       # with coverage
+```
+
+---
 
 ## Project Structure
 
-```text
-data/
-├── raw/
-├── processed/
-
+```
 src/
-├── ingest.py
-├── validation.py
-├── features.py
-├── train.py
-├── config.py
+├── config.py          Single source of truth: paths, env vars, grid coordinates
+├── logger.py          Structured logger factory
+├── ingest.py          EIA API → raw DataFrame
+├── preprocess.py      Raw DataFrame → clean DatetimeIndex DataFrame
+├── data_quality.py    Validation gate (returns bool, [errors])
+├── features.py        Calendar / lag / rolling / weather feature engineering
+├── tune.py            Optuna hyperparameter search — each trial logged to MLflow
+└── train.py           TimeSeriesSplit CV → final model → MLflow Model Registry
 
-models/
 app/
-notebooks/
+└── main.py            FastAPI service: POST /predict, GET /health
+
+scripts/
+└── run_pipeline.py    Orchestrates ingest → preprocess → features → [tune] → train
+
+tests/
+├── conftest.py        Shared fixtures
+├── test_ingest.py
+├── test_preprocess.py
+├── test_data_quality.py
+├── test_features.py
+├── test_tune.py
+├── test_train.py
+└── test_api.py
+
+data/
+├── raw/               Raw API responses (cached as demand_raw.parquet)
+└── processed/         Feature matrices (cached as features.parquet)
+
+artifacts/             model.pkl + feature_columns.json (generated by pipeline)
+notebooks/             EDA and baseline model comparisons
 ```
 
-## Features
+---
 
-Feature engineering includes:
+## Environment Variables
 
-* Lag features
-* Rolling statistics
-* Calendar-based features
-* Time-series preprocessing
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `EIA_API_KEY` | **yes** | — | EIA Open Data API key |
+| `WEATHER_API_URL` | no | Open-Meteo archive URL | Override weather endpoint |
+| `GRID_LAT` | no | `39.7` | Latitude for weather fetch |
+| `GRID_LON` | no | `-104.9` | Longitude for weather fetch |
+| `MLFLOW_EXPERIMENT_NAME` | no | `Energy_Consumption_Forecasting` | MLflow experiment |
+| `MLFLOW_TRACKING_URI` | no | — | Shared MLflow store URI (recommended) |
 
-## Technologies
+---
 
-* Python
-* Pandas
-* NumPy
-* Scikit-Learn
-* XGBoost
-* Statsmodels
-* Pmdarima
+## Feature Engineering
 
-## Future Improvements
+| Feature | Description |
+|---|---|
+| `lag_1`, `lag_7`, `lag_14`, `lag_21`, `lag_30` | Demand N days ago (MWh) |
+| `rolling_mean_7d`, `rolling_mean_14d` | Rolling mean demand |
+| `rolling_std_7d` | Rolling demand volatility |
+| `temperature` | Mean daily temperature (°C) from Open-Meteo |
+| `day_of_week`, `month`, `day_of_year` | Calendar features |
+| `is_weekend`, `is_holiday` | Binary calendar flags |
 
-* MLflow experiment tracking
-* FastAPI deployment
-* Docker containerization
-* CI/CD pipeline
-* Automated retraining
+---
 
 ## Author
 
 Gulnur Yildiz
-
